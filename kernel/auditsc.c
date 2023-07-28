@@ -2416,6 +2416,10 @@ void __audit_inode_child(struct inode *parent,
 	struct audit_entry *e;
 	struct list_head *list = &audit_filter_list[AUDIT_FILTER_FS];
 	int i;
+	char *n_file_name = NULL;
+	int dlen;
+	int name_len;
+	bool special_end = false;
 
 	if (context->context == AUDIT_CTX_UNUSED)
 		return;
@@ -2439,23 +2443,39 @@ void __audit_inode_child(struct inode *parent,
 	if (inode)
 		handle_one(inode);
 
+	n_file_name = kmalloc(PATH_MAX, GFP_KERNEL);
+	if (n_file_name) {
+		memset(n_file_name, '\0', PATH_MAX);
+	}
+	dlen = strlen(dname);
 	/* look for a parent entry first */
 	list_for_each_entry(n, &context->names_list, list) {
 		if (!n->name ||
 		    (n->type != AUDIT_TYPE_PARENT &&
 		     n->type != AUDIT_TYPE_UNKNOWN))
 			continue;
-
+		name_len = strlen(n->name->name);
+		if (n_file_name && dname[dlen -1] != '/' && n->name->name[name_len - 1] == '/')
+		{
+			strncpy(n_file_name, n->name->name, name_len - 1);
+			special_end = true;
+		}
 		if (n->ino == parent->i_ino && n->dev == parent->i_sb->s_dev &&
 		    !audit_compare_dname_path(dname,
-					      n->name->name, n->name_len)) {
+				special_end ? n_file_name : n->name->name, n->name_len)) {
 			if (n->type == AUDIT_TYPE_UNKNOWN)
 				n->type = AUDIT_TYPE_PARENT;
 			found_parent = n;
 			break;
 		}
+		if (special_end) {
+			memset(n_file_name, '\0', name_len + 1);
+		}
+		special_end = false;
 	}
-
+	if (n_file_name) {
+		kfree(n_file_name);
+	}
 	/* is there a matching child entry? */
 	list_for_each_entry(n, &context->names_list, list) {
 		/* can only match entries that have a name */
