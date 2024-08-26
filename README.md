@@ -69,10 +69,11 @@ merged during the normal kernel development cycle.  Patches merged into the
 dev branch will be present in the next branch (see the next branch notes) and
 will be sent to Linus during the next merge window.
 
-Developers should use the dev branch a stable basis for their own development
-work, only under extreme circumstances will the dev branch be rebased during
-the X.Y-rc cycle and the maintainer will be responsible for resolving any
-merge conflicts, although help and/or may be requested in extreme cases.
+Developers should use the dev branch as a stable basis for their own
+development work, only under extreme circumstances will the dev branch be
+rebased during the X.Y-rc cycle and the maintainer will be responsible for
+resolving any merge conflicts, although help and/or may be requested in extreme
+cases.
 
 #### dev-staging branch
 
@@ -124,8 +125,7 @@ a new stable-X'.Y' branch, representing the new upcoming kernel release, and
 the second is that a pull request will be sent from this branch for inclusion
 into the current merge window.  During the merge window process the dev and
 next branches should be frozen, although there is a possibility that some
-patches may be merged merged into dev-staging for testing or process related
-reasons.
+patches may be merged into dev-staging for testing or process related reasons.
 
 #### Pull Requests for Linus
 
