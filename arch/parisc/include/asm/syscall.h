@@ -28,12 +28,18 @@ static inline void syscall_get_arguments(struct task_struct *tsk,
 					 struct pt_regs *regs,
 					 unsigned long *args)
 {
-	args[5] = regs->gr[21];
-	args[4] = regs->gr[22];
-	args[3] = regs->gr[23];
-	args[2] = regs->gr[24];
-	args[1] = regs->gr[25];
-	args[0] = regs->gr[26];
+	unsigned long mask = -1UL;
+
+	/* Mask off garbage in the upper 32 bits for compat tasks. */
+	if (__is_compat_task(tsk))
+		mask = 0xffffffff;
+
+	args[5] = regs->gr[21] & mask;
+	args[4] = regs->gr[22] & mask;
+	args[3] = regs->gr[23] & mask;
+	args[2] = regs->gr[24] & mask;
+	args[1] = regs->gr[25] & mask;
+	args[0] = regs->gr[26] & mask;
 }
 
 static inline void syscall_set_arguments(struct task_struct *tsk,
