@@ -729,6 +729,8 @@ static int audit_filter_rules(struct task_struct *tsk,
 		case AUDIT_ARG1:
 		case AUDIT_ARG2:
 		case AUDIT_ARG3:
+		case AUDIT_ARG4:
+		case AUDIT_ARG5:
 			if (ctx)
 				result = audit_comparator(ctx->argv[f->type-AUDIT_ARG0], f->op, f->val);
 			break;
@@ -1675,11 +1677,13 @@ static void audit_log_exit(void)
 						    AUDITSC_SUCCESS),
 					 context->return_code);
 		audit_log_format(ab,
-				 " a0=%lx a1=%lx a2=%lx a3=%lx items=%d",
+				 " a0=%lx a1=%lx a2=%lx a3=%lx a4=%lx a5=%lx items=%d",
 				 context->argv[0],
 				 context->argv[1],
 				 context->argv[2],
 				 context->argv[3],
+				 context->argv[4],
+				 context->argv[5],
 				 context->name_count);
 		audit_log_task_info(ab);
 		audit_log_key(ab, context->filterkey);
@@ -2017,6 +2021,53 @@ void __audit_syscall_entry(int major, unsigned long a1, unsigned long a2,
 	context->argv[1]    = a2;
 	context->argv[2]    = a3;
 	context->argv[3]    = a4;
+	context->context = AUDIT_CTX_SYSCALL;
+	context->current_state  = state;
+	ktime_get_coarse_real_ts64(&context->stamp.ctime);
+}
+
+/**
+ * __audit_syscall_entry_regs - fill in an audit record at syscall entry
+ * @major: major syscall type (function)
+ * @regs: the task's register state at syscall entry
+ *
+ * Fill in audit context at syscall entry.  This only happens if the
+ * audit context was created when the task was created and the state or
+ * filters demand the audit context be built.  If the state from the
+ * per-task filter or from the per-syscall filter is AUDIT_STATE_RECORD,
+ * then the record will be written at syscall exit time (otherwise, it
+ * will only be written if another part of the kernel requests that it
+ * be written).
+ */
+void __audit_syscall_entry_regs(int major, struct pt_regs *regs)
+{
+	struct audit_context *context = audit_context();
+	enum audit_state     state;
+
+	if (!audit_enabled || !context)
+		return;
+
+	WARN_ON(context->context != AUDIT_CTX_UNUSED);
+	WARN_ON(context->name_count);
+	if (context->context != AUDIT_CTX_UNUSED || context->name_count) {
+		audit_panic("unrecoverable error in audit_syscall_entry_regs()");
+		return;
+	}
+
+	state = context->state;
+	if (state == AUDIT_STATE_DISABLED)
+		return;
+
+	context->dummy = !audit_n_rules;
+	if (!context->dummy && state == AUDIT_STATE_BUILD) {
+		context->prio = 0;
+		if (auditd_test_task(current))
+			return;
+	}
+
+	context->arch	    = syscall_get_arch(current);
+	context->major      = major;
+	syscall_get_arguments(current, regs, context->argv);
 	context->context = AUDIT_CTX_SYSCALL;
 	context->current_state  = state;
 	ktime_get_coarse_real_ts64(&context->stamp.ctime);
