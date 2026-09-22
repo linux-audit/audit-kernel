@@ -466,7 +466,7 @@ asmlinkage long do_syscall_trace_enter(struct pt_regs *regs)
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
 		trace_sys_enter(regs, regs->regs[0]);
 
-	audit_syscall_entry_regs(regs->regs[3], regs);
+	audit_syscall_entry(regs->regs[3], regs);
 
 	return 0;
 }

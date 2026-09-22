@@ -150,7 +150,7 @@ asmlinkage unsigned long do_syscall_trace_enter(struct pt_regs *regs)
 		 */
 		ret = -1L;
 
-	audit_syscall_entry_regs(regs->r12, regs);
+	audit_syscall_entry(regs->r12, regs);
 
 	return ret ?: regs->r12;
 }

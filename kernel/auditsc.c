@@ -1975,10 +1975,7 @@ out:
 /**
  * __audit_syscall_entry - fill in an audit record at syscall entry
  * @major: major syscall type (function)
- * @a1: additional syscall register 1
- * @a2: additional syscall register 2
- * @a3: additional syscall register 3
- * @a4: additional syscall register 4
+ * @regs: the task's register state at syscall entry
  *
  * Fill in audit context at syscall entry.  This only happens if the
  * audit context was created when the task was created and the state or
@@ -1988,8 +1985,7 @@ out:
  * will only be written if another part of the kernel requests that it
  * be written).
  */
-void __audit_syscall_entry(int major, unsigned long a1, unsigned long a2,
-			   unsigned long a3, unsigned long a4)
+void __audit_syscall_entry(int major, struct pt_regs *regs)
 {
 	struct audit_context *context = audit_context();
 	enum audit_state     state;
@@ -2001,56 +1997,6 @@ void __audit_syscall_entry(int major, unsigned long a1, unsigned long a2,
 	WARN_ON(context->name_count);
 	if (context->context != AUDIT_CTX_UNUSED || context->name_count) {
 		audit_panic("unrecoverable error in audit_syscall_entry()");
-		return;
-	}
-
-	state = context->state;
-	if (state == AUDIT_STATE_DISABLED)
-		return;
-
-	context->dummy = !audit_n_rules;
-	if (!context->dummy && state == AUDIT_STATE_BUILD) {
-		context->prio = 0;
-		if (auditd_test_task(current))
-			return;
-	}
-
-	context->arch	    = syscall_get_arch(current);
-	context->major      = major;
-	context->argv[0]    = a1;
-	context->argv[1]    = a2;
-	context->argv[2]    = a3;
-	context->argv[3]    = a4;
-	context->context = AUDIT_CTX_SYSCALL;
-	context->current_state  = state;
-	ktime_get_coarse_real_ts64(&context->stamp.ctime);
-}
-
-/**
- * __audit_syscall_entry_regs - fill in an audit record at syscall entry
- * @major: major syscall type (function)
- * @regs: the task's register state at syscall entry
- *
- * Fill in audit context at syscall entry.  This only happens if the
- * audit context was created when the task was created and the state or
- * filters demand the audit context be built.  If the state from the
- * per-task filter or from the per-syscall filter is AUDIT_STATE_RECORD,
- * then the record will be written at syscall exit time (otherwise, it
- * will only be written if another part of the kernel requests that it
- * be written).
- */
-void __audit_syscall_entry_regs(int major, struct pt_regs *regs)
-{
-	struct audit_context *context = audit_context();
-	enum audit_state     state;
-
-	if (!audit_enabled || !context)
-		return;
-
-	WARN_ON(context->context != AUDIT_CTX_UNUSED);
-	WARN_ON(context->name_count);
-	if (context->context != AUDIT_CTX_UNUSED || context->name_count) {
-		audit_panic("unrecoverable error in audit_syscall_entry_regs()");
 		return;
 	}
 

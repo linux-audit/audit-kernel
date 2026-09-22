@@ -23,6 +23,6 @@ void syscall_enter_audit(struct pt_regs *regs)
 {
 	long syscall = syscall_get_nr(current, regs);
 
-	__audit_syscall_entry_regs(syscall, regs);
+	__audit_syscall_entry(syscall, regs);
 }
 #endif
