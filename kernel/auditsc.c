@@ -2242,9 +2242,12 @@ static void audit_copy_inode(struct audit_names *name,
  * @name: name being audited
  * @dentry: dentry being audited
  * @flags: attributes for this particular entry
+ *
+ * Return: the collected entry, or NULL if collection was skipped or failed.
  */
-void __audit_inode(struct filename *name, const struct dentry *dentry,
-		   unsigned int flags)
+struct audit_names *__audit_inode(struct filename *name,
+				  const struct dentry *dentry,
+				  unsigned int flags)
 {
 	struct audit_context *context = audit_context();
 	struct inode *inode = d_backing_inode(dentry);
@@ -2255,7 +2258,7 @@ void __audit_inode(struct filename *name, const struct dentry *dentry,
 	int i;
 
 	if (context->context == AUDIT_CTX_UNUSED)
-		return;
+		return NULL;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(e, list, list) {
@@ -2267,7 +2270,7 @@ void __audit_inode(struct filename *name, const struct dentry *dentry,
 						f->op, f->val)
 			    && e->rule.action == AUDIT_NEVER) {
 				rcu_read_unlock();
-				return;
+				return NULL;
 			}
 		}
 	}
@@ -2321,7 +2324,7 @@ out_alloc:
 	/* unable to find an entry with both a matching name and type */
 	n = audit_alloc_name(context, AUDIT_TYPE_UNKNOWN);
 	if (!n)
-		return;
+		return NULL;
 	if (name) {
 		n->name = name;
 		name->refcnt++;
@@ -2339,6 +2342,7 @@ out:
 	}
 	handle_path(dentry);
 	audit_copy_inode(n, dentry, inode, flags & AUDIT_INODE_NOEVAL);
+	return n;
 }
 
 void __audit_file(const struct file *file)
