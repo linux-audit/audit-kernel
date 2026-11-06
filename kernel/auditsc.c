@@ -936,6 +936,8 @@ static inline void audit_free_names(struct audit_context *context)
 		list_del(&n->list);
 		if (n->name)
 			putname(n->name);
+		path_put(&n->fd_path);
+		n->fd_path = (struct path) { };
 		if (n->should_free)
 			kfree(n);
 	}
@@ -1531,7 +1533,9 @@ static void audit_log_name(struct audit_context *context, struct audit_names *n,
 			audit_log_n_untrustedstring(ab, n->name->name,
 						    n->name_len);
 		}
-	} else
+	} else if (n->fd_path.dentry)
+		audit_log_d_path(ab, " name=", &n->fd_path);
+	else
 		audit_log_format(ab, " name=(null)");
 
 	if (n->ino != AUDIT_INO_UNSET)
@@ -2347,7 +2351,15 @@ out:
 
 void __audit_file(const struct file *file)
 {
-	__audit_inode(NULL, file->f_path.dentry, 0);
+	struct audit_names *n;
+
+	n = __audit_inode(NULL, file->f_path.dentry, 0);
+	if (!n)
+		return;
+
+	/* Resolve at event emission, so renames and unlinks can affect the name. */
+	n->fd_path = file->f_path;
+	path_get(&n->fd_path);
 }
 
 /**

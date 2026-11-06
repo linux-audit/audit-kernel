@@ -75,6 +75,7 @@ struct audit_cap_data {
 struct audit_names {
 	struct list_head	list;		/* audit_context->names_list */
 
+	struct path		fd_path;	/* owned audit_file() fallback */
 	struct filename		*name;
 	int			name_len;	/* number of chars to log */
 	dev_t			dev;
