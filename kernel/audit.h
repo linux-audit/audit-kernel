@@ -77,17 +77,14 @@ struct audit_names {
 
 	struct filename		*name;
 	int			name_len;	/* number of chars to log */
-	bool			hidden;		/* don't log this record */
-
-	u64			ino;
 	dev_t			dev;
-	umode_t			mode;
+	u64			ino;
 	kuid_t			uid;
 	kgid_t			gid;
 	dev_t			rdev;
 	struct lsm_prop		oprop;
-	struct audit_file_caps	fcap;
-	unsigned int		fcap_ver;
+	umode_t			mode;
+	bool			hidden;		/* don't log this record */
 	unsigned char		type;		/* record type */
 	/*
 	 * This was an allocated audit_names and not from the array of
@@ -95,6 +92,8 @@ struct audit_names {
 	 * should be freed on syscall exit.
 	 */
 	bool			should_free;
+	s16			fcap_ver;	/* 8-bit revision, or -1 for NOEVAL */
+	struct audit_file_caps	fcap;
 };
 
 struct audit_proctitle {
@@ -132,8 +131,8 @@ struct audit_context {
 	 * through the preallocated_names array and should only be found/used
 	 * by running the names_list.
 	 */
-	struct audit_names  preallocated_names[AUDIT_NAMES];
 	int		    name_count; /* total records in names_list */
+	struct audit_names  preallocated_names[AUDIT_NAMES];
 	struct list_head    names_list;	/* struct audit_names->list anchor */
 	char		    *filterkey;	/* key for rule that triggered record */
 	struct path	    pwd;
@@ -142,10 +141,10 @@ struct audit_context {
 	struct sockaddr_storage *sockaddr;
 	size_t sockaddr_len;
 	/* Save things to print about task_struct */
+	unsigned long	    personality;
 	pid_t		    ppid;
 	kuid_t		    uid, euid, suid, fsuid;
 	kgid_t		    gid, egid, sgid, fsgid;
-	unsigned long	    personality;
 	int		    arch;
 
 	pid_t		    target_pid;
