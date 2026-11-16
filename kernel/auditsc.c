@@ -936,6 +936,8 @@ static inline void audit_free_names(struct audit_context *context)
 		list_del(&n->list);
 		if (n->name)
 			putname(n->name);
+		path_put(&n->fd_path);
+		n->fd_path = (struct path) { };
 		if (n->should_free)
 			kfree(n);
 	}
@@ -1531,7 +1533,9 @@ static void audit_log_name(struct audit_context *context, struct audit_names *n,
 			audit_log_n_untrustedstring(ab, n->name->name,
 						    n->name_len);
 		}
-	} else
+	} else if (n->fd_path.dentry)
+		audit_log_d_path(ab, " name=", &n->fd_path);
+	else
 		audit_log_format(ab, " name=(null)");
 
 	if (n->ino != AUDIT_INO_UNSET)
@@ -2242,9 +2246,12 @@ static void audit_copy_inode(struct audit_names *name,
  * @name: name being audited
  * @dentry: dentry being audited
  * @flags: attributes for this particular entry
+ *
+ * Return: the collected entry, or NULL if collection was skipped or failed.
  */
-void __audit_inode(struct filename *name, const struct dentry *dentry,
-		   unsigned int flags)
+struct audit_names *__audit_inode(struct filename *name,
+				  const struct dentry *dentry,
+				  unsigned int flags)
 {
 	struct audit_context *context = audit_context();
 	struct inode *inode = d_backing_inode(dentry);
@@ -2255,7 +2262,7 @@ void __audit_inode(struct filename *name, const struct dentry *dentry,
 	int i;
 
 	if (context->context == AUDIT_CTX_UNUSED)
-		return;
+		return NULL;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(e, list, list) {
@@ -2267,7 +2274,7 @@ void __audit_inode(struct filename *name, const struct dentry *dentry,
 						f->op, f->val)
 			    && e->rule.action == AUDIT_NEVER) {
 				rcu_read_unlock();
-				return;
+				return NULL;
 			}
 		}
 	}
@@ -2321,7 +2328,7 @@ out_alloc:
 	/* unable to find an entry with both a matching name and type */
 	n = audit_alloc_name(context, AUDIT_TYPE_UNKNOWN);
 	if (!n)
-		return;
+		return NULL;
 	if (name) {
 		n->name = name;
 		name->refcnt++;
@@ -2339,11 +2346,20 @@ out:
 	}
 	handle_path(dentry);
 	audit_copy_inode(n, dentry, inode, flags & AUDIT_INODE_NOEVAL);
+	return n;
 }
 
 void __audit_file(const struct file *file)
 {
-	__audit_inode(NULL, file->f_path.dentry, 0);
+	struct audit_names *n;
+
+	n = __audit_inode(NULL, file->f_path.dentry, 0);
+	if (!n)
+		return;
+
+	/* Resolve at event emission, so renames and unlinks can affect the name. */
+	n->fd_path = file->f_path;
+	path_get(&n->fd_path);
 }
 
 /**

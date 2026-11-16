@@ -1,3 +1,6 @@
 __NR_kill,
 __NR_tgkill,
 __NR_tkill,
+__NR_rt_sigqueueinfo,
+__NR_rt_tgsigqueueinfo,
+__NR_pidfd_send_signal,

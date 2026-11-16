@@ -35,6 +35,7 @@ struct audit_sig_info {
 
 struct audit_buffer;
 struct audit_context;
+struct audit_names;
 struct inode;
 struct netlink_skb_parms;
 struct path;
@@ -327,8 +328,9 @@ extern void __audit_syscall_entry(int major, unsigned long a0, unsigned long a1,
 				  unsigned long a2, unsigned long a3);
 extern void __audit_syscall_exit(int ret_success, long ret_value);
 extern void __audit_getname(struct filename *name);
-extern void __audit_inode(struct filename *name, const struct dentry *dentry,
-				unsigned int flags);
+extern struct audit_names *__audit_inode(struct filename *name,
+					 const struct dentry *dentry,
+					 unsigned int flags);
 extern void __audit_file(const struct file *);
 extern void __audit_inode_child(struct inode *parent,
 				const struct dentry *dentry,
